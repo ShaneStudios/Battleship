@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battleship</title>
+    <style>
+        :root {
+            --bg-main: #0d1117;
+            --bg-panel: #161b22;
+            --bg-panel-hover: #21262d;
+            --border-primary: #30363d;
+            --border-secondary: #21262d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-blue-hover: #79c0ff;
+            --accent-red: #f85149;
+            --accent-yellow: #e3b341;
+            --accent-green: #3fb950;
+            --accent-purple: #a371f7;
+            --accent-orange: #f0883e;
+            --water-color: #010409;
+            --ship-color: #484f58;
+            --hit-color: var(--accent-red);
+            --miss-color-peg: #6e7681;
+            --sunk-color-bg: #30363d;
+            --highlight-place-start: var(--accent-yellow);
+            --highlight-option1: var(--accent-green);
+            --highlight-option2: var(--accent-orange);
+            --highlight-option3: var(--accent-purple);
+            --highlight-option4: var(--accent-blue);
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+        }
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: var(--font-sans);
+            display: flex;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            line-height: 1.5;
+        }
+        #side-menu {
+            width: 260px;
+            background-color: var(--bg-panel);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border-right: 1px solid var(--border-primary);
+        }
+        #side-menu h2 {
+            color: var(--text-primary);
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.6em;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        #side-menu button {
+            background-color: var(--bg-panel-hover);
+            color: var(--text-primary);
+            border: 1px solid var(--border-primary);
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95em;
+            transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #side-menu button:hover {
+            background-color: #2e343d;
+            border-color: var(--text-secondary);
+        }
+        #side-menu button:active { transform: scale(0.98); }
+        #side-menu button:disabled {
+            background-color: var(--bg-panel);
+            color: var(--text-secondary);
+            border-color: var(--border-secondary);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        #restart-button {
+            background-color: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: #fff;
+            font-weight: 500;
+        }
+        #restart-button:hover {
+            background-color: var(--accent-blue-hover);
+            border-color: var(--accent-blue-hover);
+        }
+        .game-container {
+            flex-grow: 1;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+        }
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 750px;
+            padding: 12px 20px;
+            background-color: var(--bg-panel);
+            border-radius: 8px;
+            border: 1px solid var(--border-primary);
+        }
+        #game-timer, #game-status {
+            font-size: 1.1em;
+        }
+        #game-status { font-weight: 600; }
+        .boards-container {
+            display: flex;
+            gap: 35px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .grid-container { text-align: center; }
+        .grid-container h3 {
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            font-size: 1.2em;
+            font-weight: 500;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(10, 30px);
+            grid-template-rows: repeat(10, 30px);
+            border: 1px solid var(--border-primary);
+            width: 301px;
+            height: 301px;
+            background-color: var(--water-color);
+            border-radius: 4px;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.4);
+        }
+        .grid-cell {
+            width: 30px;
+            height: 30px;
+            border: 1px solid var(--border-secondary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.1s ease-in-out;
+            position: relative;
+        }
+        #player-grid .grid-cell:hover:not(.ship-segment-active-for-reset) {
+             background-color: rgba(88, 166, 255, 0.15);
+        }
+         .grid-cell.ship-segment-active-for-reset {
+            background-color: rgba(240, 136, 62, 0.3) !important;
+            outline: 1px dashed var(--accent-orange);
+        }
+        #ai-grid .grid-cell:not(.hit):not(.miss):not(.sunk):hover {
+            background-color: rgba(248, 81, 73, 0.2);
+        }
+        .grid-cell.ship { background-color: var(--ship-color); border-color: #3a4048; }
+        .grid-cell.hit { background-color: var(--hit-color); animation: pulseHitTarget 0.5s ease-out; }
+        .grid-cell.miss::before {
+            content: '';
+            width: 7px;
+            height: 7px;
+            background-color: var(--miss-color-peg);
+            border-radius: 50%;
+            opacity: 0.8;
+        }
+        .grid-cell.sunk { background-color: var(--sunk-color-bg); }
+        .grid-cell.sunk::after {
+            content: '✕';
+            font-size: 1.2em;
+            color: var(--hit-color);
+            opacity: 0.9;
+            font-weight: bold;
+        }
+        @keyframes pulseHitTarget {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .grid-cell.highlight-place { background-color: var(--highlight-place-start) !important; opacity: 0.7; }
+        .grid-cell.highlight-option1 { background-color: var(--highlight-option1) !important; opacity: 0.6;}
+        .grid-cell.highlight-option2 { background-color: var(--highlight-option2) !important; opacity: 0.6;}
+        .grid-cell.highlight-option3 { background-color: var(--highlight-option3) !important; opacity: 0.6;}
+        .grid-cell.highlight-option4 { background-color: var(--highlight-option4) !important; opacity: 0.6;}
+        #player-setup-ships {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: var(--bg-panel);
+            border-radius: 8px;
+            border: 1px solid var(--border-primary);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+        #player-setup-ships h4{
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+        #player-setup-ships button {
+            padding: 9px 16px;
+            background-color: var(--ship-color);
+            color: var(--text-primary);
+            border: 1px solid #5c6470;
+            border-radius: 5px;
+            cursor: pointer;
+            min-width: 200px;
+            text-align: center;
+            transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s;
+        }
+        #player-setup-ships button:hover:not(:disabled) {
+            background-color: #58606e;
+            border-color: #707885;
+        }
+        #player-setup-ships button.selected {
+            border-color: var(--highlight-place-start);
+            background-color: #40464f;
+            box-shadow: 0 0 0 2px var(--highlight-place-start);
+        }
+        #player-setup-ships button:disabled {
+             background-color: var(--bg-panel-hover);
+             color: var(--text-secondary);
+             border-color: var(--border-primary);
+             opacity: 0.7;
+             cursor: not-allowed;
+        }
+        .reposition-ship-popover {
+            position: absolute;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--accent-orange);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            z-index: 20;
+            cursor: pointer;
+            font-size: 0.85em;
+            white-space: nowrap;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .reposition-ship-popover:hover { background-color: #d87832; }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(13, 17, 23, 0.8);
+            backdrop-filter: blur(2px);
+        }
+        .modal-content {
+            background-color: var(--bg-panel);
+            color: var(--text-primary);
+            margin: 8vh auto;
+            padding: 25px;
+            border: 1px solid var(--border-primary);
+            width: 90%;
+            max-width: 500px;
+            border-radius: 8px;
+            position: relative;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            animation: modalSlideIn 0.25s ease-out;
+        }
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .modal-content h2 {
+            margin-top:0;
+            color: var(--text-primary);
+            margin-bottom: 18px;
+            font-weight: 600;
+            font-size: 1.4em;
+        }
+        .modal-content p, .modal-content ul {
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+            font-size: 0.95em;
+        }
+        .modal-content ul { list-style-position: inside; padding-left: 0; }
+        .modal-content li { margin-bottom: 6px; }
+        .modal-content a { color: var(--accent-blue); text-decoration: none; }
+        .modal-content a:hover { text-decoration: underline; color: var(--accent-blue-hover); }
+        .modal-content button {
+            background-color: var(--accent-blue);
+            color: #fff;
+            border: none;
+            padding: 9px 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            transition: background-color 0.2s;
+            margin-top: 8px;
+        }
+        .modal-content button:hover { background-color: var(--accent-blue-hover); }
+        .modal-actions {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .modal-actions button {
+            padding: 9px 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            transition: background-color 0.2s, border-color 0.2s;
+            border: none;
+        }
+        .button-danger {
+            background-color: var(--accent-red);
+            color: white;
+        }
+        .button-danger:hover {
+            background-color: #c53030;
+        }
+        .button-secondary {
+            background-color: var(--bg-panel-hover);
+            color: var(--text-primary);
+            border: 1px solid var(--border-primary);
+        }
+        .button-secondary:hover {
+            background-color: #2e343d;
+            border-color: var(--text-secondary);
+        }
+        .close-button {
+            color: var(--text-secondary);
+            position: absolute;
+            top: 12px;
+            right: 15px;
+            font-size: 28px;
+            line-height: 1;
+            font-weight: bold;
+            transition: color 0.2s;
+        }
+        .close-button:hover,
+        .close-button:focus { color: var(--text-primary); text-decoration: none; cursor: pointer; }
+        #game-log-content {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border-secondary);
+            border-radius: 4px;
+            padding: 8px;
+            background-color: var(--bg-main);
+        }
+        #game-log-content table { width: 100%; border-collapse: collapse; }
+        #game-log-content th, #game-log-content td {
+            border-bottom: 1px solid var(--border-secondary);
+            padding: 8px 6px;
+            text-align: left;
+            font-size: 0.85em;
+        }
+        #game-log-content th {
+            background-color: var(--bg-panel-hover);
+            color: var(--text-primary);
+            font-weight: 600;
+            position: sticky; top: 0;
+        }
+        #game-log-content td { color: var(--text-secondary); }
+        #game-log-content tr:last-child td { border-bottom: none; }
+        #end-game-log-container {
+            margin-top: 25px;
+            padding: 18px;
+            border: 1px solid var(--border-primary);
+            background-color: var(--bg-panel);
+            color: var(--text-primary);
+            border-radius: 8px;
+            width: 100%;
+            max-width: 750px;
+        }
+        #end-game-log-container h3 {
+            color: var(--text-primary);
+            text-align: center;
+            margin-bottom: 12px;
+            font-weight: 600;
+            font-size: 1.3em;
+        }
+        #end-game-log-table-container { max-height: 220px; overflow-y: auto; }
+        @media (max-width: 900px) {
+            body { flex-direction: column; }
+            #side-menu {
+                width: 100%;
+                min-height: auto;
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+                padding: 12px;
+                gap: 8px;
+                border-right: none;
+                border-bottom: 1px solid var(--border-primary);
+            }
+            #side-menu h2 { display: none; }
+            #side-menu button { font-size: 0.9em; padding: 8px 10px; flex-grow: 1; min-width: 110px; text-align: center; justify-content: center;}
+            .game-container{ padding: 15px; }
+            .boards-container { flex-direction: column; align-items: center; gap: 20px; }
+        }
+         @media (max-width: 480px) {
+             #game-timer, #game-status { font-size: 0.95em;}
+             .game-info { padding: 10px 12px; flex-direction: column; gap: 5px; text-align: center; }
+             .grid-container h3 { font-size: 1.1em; }
+             .grid {
+                grid-template-columns: repeat(10, 25px);
+                grid-template-rows: repeat(10, 25px);
+                width: 251px;
+                height: 251px;
+            }
+            .grid-cell { width: 25px; height: 25px; }
+             #player-setup-ships button { min-width: 180px; font-size: 0.9em; }
+         }
+    </style>
+</head>
+<body>
+    <div id="side-menu">
+        <h2>BATTLESHIP</h2>
+        <button id="restart-button">New Campaign</button>
+        <button id="undo-button" disabled>Rewind Turn</button>
+        <button id="redo-button" disabled>Forward Turn</button>
+        <button id="pause-button" disabled>Pause Ops</button>
+        <button id="game-log-button">Mission Log</button>
+        <button id="credits-button">Intel</button>
+        <button id="more-games-button">Archives</button>
+    </div>
+    <div class="game-container">
+        <div class="game-info">
+            <div id="game-timer">Time: 00:00</div>
+            <div id="game-status">Deploy your fleet, Commander!</div>
+        </div>
+        <div id="player-setup-ships">
+        </div>
+        <div class="boards-container">
+            <div class="grid-container">
+                <h3>Your Waters</h3>
+                <div id="player-grid" class="grid"></div>
+            </div>
+            <div class="grid-container">
+                <h3>Enemy Sector</h3>
+                <div id="ai-grid" class="grid"></div>
+            </div>
+        </div>
+        <div id="end-game-log-container" style="display: none;">
+             <h3>After Action Report</h3>
+             <div id="end-game-log-table-container">
+             </div>
+        </div>
+    </div>
+    <div id="pause-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-pause-modal">&times;</span>
+            <h2>Operations Paused</h2>
+            <p>Hostilities are on hold. Awaiting your command.</p>
+            <button id="continue-button">Resume Operations</button>
+        </div>
+    </div>
+    <div id="game-log-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-log-modal">&times;</span>
+            <h2>Live Mission Log</h2>
+            <div id="game-log-content">
+            </div>
+        </div>
+    </div>
+    <div id="credits-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-credits-modal">&times;</span>
+            <h2>Intelligence Briefing</h2>
+            <p>This strategic simulation module was developed by: <strong id="credits-name-placeholder"></strong></p>
+            <p>Connect with Command:</p>
+            <ul id="credits-socials">
+            </ul>
+        </div>
+    </div>
+    <div id="more-games-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-more-games-modal">&times;</span>
+            <h2>Archived Simulations by <span id="more-games-name"></span></h2>
+            <p>Explore further wargames:</p>
+            <ul id="more-games-list">
+            </ul>
+        </div>
+    </div>
+    <div id="restart-confirm-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-restart-confirm-modal">&times;</span>
+            <h2>Confirm Restart</h2>
+            <p>Are you sure you want to abandon the current mission and restart deployment?</p>
+            <div class="modal-actions">
+                <button id="confirm-restart-button" class="button-danger">Confirm Restart</button>
+                <button id="cancel-restart-button" class="button-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        const YOUR_NAME_ALIAS = "Shane Studios";
+        const YOUR_PROFILE_URL = "https://github.com/ShaneStudios/";
+        const SOCIAL_LINKS = [];
+        const MORE_GAMES_LINKS = [
+            { name: "Chess", repoUrl: "https://github.com/ShaneStudios/Chess" },
+            { name: "Solitaire", repoUrl: "https://github.com/ShaneStudios/Solitaire" },
+            { name: "UNO", repoUrl: "https://github.com/ShaneStudios/UNO" },
+            { name: "2048", repoUrl: "https://github.com/ShaneStudios/2048" },
+            { name: "Music Player", repoUrl: "https://github.com/ShaneStudios/MiniMusicPlayerHTML5" },
+            { name: "Face Tracker", repoUrl: "https://github.com/ShaneStudios/face-tracker-HTML5" },
+            { name: "Google Gemini Client", repoUrl: "https://github.com/ShaneStudios/Google-Gemini-HTML5" },
+            { name: "Prime Number Counter", repoUrl: "https://github.com/ShaneStudios/Prime-Number-Counter" },
+            { name: "Agar.io Local", repoUrl: "https://github.com/ShaneStudios/Agar.io-Local" }
+        ];
+        const playerGridEl = document.getElementById('player-grid');
+        const aiGridEl = document.getElementById('ai-grid');
+        const playerSetupShipsEl = document.getElementById('player-setup-ships');
+        const gameStatusEl = document.getElementById('game-status');
+        const gameTimerEl = document.getElementById('game-timer');
+        const restartButton = document.getElementById('restart-button');
+        const undoButton = document.getElementById('undo-button');
+        const redoButton = document.getElementById('redo-button');
+        const pauseButton = document.getElementById('pause-button');
+        const gameLogButton = document.getElementById('game-log-button');
+        const creditsButton = document.getElementById('credits-button');
+        const moreGamesButton = document.getElementById('more-games-button');
+        const pauseModal = document.getElementById('pause-modal');
+        const continueButton = document.getElementById('continue-button');
+        const gameLogModal = document.getElementById('game-log-modal');
+        const closeLogModal = document.getElementById('close-log-modal');
+        const gameLogContentEl = document.getElementById('game-log-content');
+        const creditsModal = document.getElementById('credits-modal');
+        const closeCreditsModal = document.getElementById('close-credits-modal');
+        const creditsNamePlaceholderEl = document.getElementById('credits-name-placeholder');
+        const creditsSocialsEl = document.getElementById('credits-socials');
+        const moreGamesModal = document.getElementById('more-games-modal');
+        const closeMoreGamesModal = document.getElementById('close-more-games-modal');
+        const moreGamesNameEls = document.querySelectorAll('#more-games-name');
+        const moreGamesListEl = document.getElementById('more-games-list');
+        const endGameLogContainerEl = document.getElementById('end-game-log-container');
+        const endGameLogTableContainerEl = document.getElementById('end-game-log-table-container');
+        const restartConfirmModal = document.getElementById('restart-confirm-modal');
+        const closeRestartConfirmModal = document.getElementById('close-restart-confirm-modal');
+        const confirmRestartButton = document.getElementById('confirm-restart-button');
+        const cancelRestartButton = document.getElementById('cancel-restart-button');
+        const GRID_SIZE = 10;
+        const SHIP_TYPES = [
+            { name: 'Carrier', length: 5, id: 'carrier' },
+            { name: 'Battleship', length: 4, id: 'battleship' },
+            { name: 'Cruiser', length: 3, id: 'cruiser' },
+            { name: 'Submarine', length: 3, id: 'submarine' },
+            { name: 'Destroyer', length: 2, id: 'destroyer' }
+        ];
+        const CELL_STATE = { EMPTY: 0, SHIP: 1, HIT: 2, MISS: 3, SUNK: 4 };
+        const PLAYER_TYPE = { HUMAN: 'Human', AI: 'AI' };
+        const HIGHLIGHT_COLORS = ['highlight-option1', 'highlight-option2', 'highlight-option3', 'highlight-option4'];
+        let playerBoard = [];
+        let aiBoard = [];
+        let playerShips = [];
+        let aiShips = [];
+        let gamePhase = 'SETUP';
+        let selectedShipToPlace = null;
+        let placementStartCell = null;
+        let currentRepositionPopover = null;
+        let gameTimerInterval;
+        let secondsElapsed = 0;
+        let isPaused = false;
+        let gameLog = [];
+        let moveStartTime;
+        let history = [];
+        let historyIndex = -1;
+        let aiCurrentPhase = 'BLIND_BARRAGE';
+        const BLIND_BARRAGE_SHOT_LIMIT = 12;
+        let aiShotsInCurrentPhase = 0;
+        let aiFocusedSearchStagnation = 0;
+        const STAGNATION_LIMIT_FOCUSED = 5;
+        let aiProbabilityMap = [];
+        let aiHuntModeData = {
+            active: false, shipId: null, initialHit: null, confirmedHits: [],
+            potentialTargets: [], currentLineOrientation: null
+        };
+        function initGame() {
+            gamePhase = 'SETUP';
+            playerBoard = createEmptyBoard(); aiBoard = createEmptyBoard();
+            playerShips = []; aiShips = [];
+            selectedShipToPlace = null; placementStartCell = null;
+            removeRepositionPopover();
+            secondsElapsed = 0;
+            if (gameTimerInterval) clearInterval(gameTimerInterval); gameTimerInterval = null;
+            isPaused = false; updateTimerDisplay();
+            gameLog = []; updateGameLogDisplay();
+            endGameLogContainerEl.style.display = 'none';
+            history = []; historyIndex = -1; updateUndoRedoButtons();
+            aiCurrentPhase = 'BLIND_BARRAGE';
+            aiShotsInCurrentPhase = 0;
+            aiFocusedSearchStagnation = 0;
+            aiProbabilityMap = createEmptyBoard().map(row => row.map(() => 0));
+            aiHuntModeData = { active: false, shipId: null, initialHit: null, confirmedHits: [], potentialTargets: [], currentLineOrientation: null };
+            renderGrid(playerGridEl, playerBoard, true); renderGrid(aiGridEl, aiBoard, false);
+            playerSetupShipsEl.style.display = 'flex'; setupShipSelection();
+            gameStatusEl.textContent = 'Deploy your fleet, Commander!';
+            pauseButton.disabled = true;
+        }
+        function createEmptyBoard() {
+            const board = [];
+            for (let r = 0; r < GRID_SIZE; r++) {
+                board[r] = [];
+                for (let c = 0; c < GRID_SIZE; c++) board[r][c] = { state: CELL_STATE.EMPTY, shipId: null };
+            }
+            return board;
+        }
+        function setupShipSelection() {
+            playerSetupShipsEl.innerHTML = '<h4>Available Vessels:</h4>';
+            SHIP_TYPES.forEach(shipType => {
+                const button = document.createElement('button');
+                button.textContent = `${shipType.name} (${shipType.length} units)`;
+                button.dataset.shipId = shipType.id; button.dataset.shipLength = shipType.length;
+                button.onclick = () => handleShipSelectForPlacement(shipType, button);
+                playerSetupShipsEl.appendChild(button);
+            });
+        }
+        function renderGrid(gridElement, boardData, isPlayerGrid, showPlacementHighlights = false) {
+            gridElement.innerHTML = '';
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    const cellEl = document.createElement('div');
+                    cellEl.classList.add('grid-cell');
+                    cellEl.dataset.row = r; cellEl.dataset.col = c;
+                    const cellData = boardData[r][c];
+                    if (cellData.state === CELL_STATE.SHIP) { if (isPlayerGrid) cellEl.classList.add('ship'); }
+                    else if (cellData.state === CELL_STATE.HIT) cellEl.classList.add('hit');
+                    else if (cellData.state === CELL_STATE.MISS) cellEl.classList.add('miss');
+                    else if (cellData.state === CELL_STATE.SUNK) cellEl.classList.add('sunk');
+                    if (isPlayerGrid) cellEl.onclick = (e) => handlePlayerGridClick(r, c, e.target);
+                    else cellEl.onclick = () => handleAiGridClick(r, c);
+                    gridElement.appendChild(cellEl);
+                }
+            }
+        }
+        function removeRepositionPopover() {
+            if (currentRepositionPopover) { currentRepositionPopover.remove(); currentRepositionPopover = null; }
+            playerGridEl.querySelectorAll('.ship-segment-active-for-reset').forEach(cell => cell.classList.remove('ship-segment-active-for-reset'));
+        }
+        function createRepositionPopover(shipId, targetCellElement) {
+            removeRepositionPopover();
+            const popover = document.createElement('div');
+            popover.classList.add('reposition-ship-popover'); popover.textContent = 'Reposition';
+            popover.onclick = (e) => { e.stopPropagation(); resetShipPlacement(shipId); removeRepositionPopover(); };
+            targetCellElement.appendChild(popover); currentRepositionPopover = popover;
+            const shipToHighlight = playerShips.find(s => s.id === shipId);
+            if(shipToHighlight) shipToHighlight.cells.forEach(cell => {
+                const cellEl = playerGridEl.querySelector(`[data-row='${cell.row}'][data-col='${cell.col}']`);
+                if(cellEl) cellEl.classList.add('ship-segment-active-for-reset');
+            });
+        }
+        function resetShipPlacement(shipIdToReset) {
+            const shipIndex = playerShips.findIndex(s => s.id === shipIdToReset);
+            if (shipIndex === -1) return;
+            const shipToReset = playerShips[shipIndex];
+            shipToReset.cells.forEach(cell => playerBoard[cell.row][cell.col] = { state: CELL_STATE.EMPTY, shipId: null });
+            playerShips.splice(shipIndex, 1);
+            const shipTypeButton = playerSetupShipsEl.querySelector(`button[data-ship-id="${shipIdToReset}"]`);
+            if (shipTypeButton) { shipTypeButton.disabled = false; shipTypeButton.classList.remove('selected'); }
+            if (selectedShipToPlace && selectedShipToPlace.id === shipIdToReset) selectedShipToPlace = null;
+            placementStartCell = null;
+            saveHistory('Reset Ship Placement');
+            renderGrid(playerGridEl, playerBoard, true, true);
+            gameStatusEl.textContent = `Vessel ${shipToReset.name} recalled. Select vessel for deployment.`;
+            removeRepositionPopover();
+            if (gamePhase !== 'SETUP' && playerShips.length === SHIP_TYPES.length) aiCalculateProbabilityMap();
+        }
+        function handleShipSelectForPlacement(shipType, buttonElement) {
+            if (gamePhase !== 'SETUP') return;
+            if (playerShips.find(s => s.id === shipType.id)) {
+                gameStatusEl.textContent = `${shipType.name} already deployed. Click on its grid segments to reposition.`; return;
+            }
+            removeRepositionPopover(); selectedShipToPlace = shipType; placementStartCell = null;
+            document.querySelectorAll('#player-setup-ships button').forEach(btn => btn.classList.remove('selected'));
+            buttonElement.classList.add('selected');
+            renderGrid(playerGridEl, playerBoard, true, true);
+            gameStatusEl.textContent = `Selected ${shipType.name}. Designate START coordinate.`;
+        }
+        function handlePlayerGridClick(row, col, cellElement) {
+            if (gamePhase !== 'SETUP') return;
+            const cellData = playerBoard[row][col];
+            if (cellData.state === CELL_STATE.SHIP && !selectedShipToPlace) { createRepositionPopover(cellData.shipId, cellElement); return; }
+            if (!selectedShipToPlace) { removeRepositionPopover(); return; }
+            if (cellData.state === CELL_STATE.SHIP && selectedShipToPlace) {
+                gameStatusEl.textContent = "Cannot place on an existing ship. Reposition it first or choose empty waters."; return;
+            }
+            removeRepositionPopover();
+            if (!placementStartCell) {
+                placementStartCell = { row, col }; cellElement.classList.add('highlight-place');
+                gameStatusEl.textContent = `Start: ${String.fromCharCode(65 + col)}${row + 1}. Designate END coordinate for ${selectedShipToPlace.name}.`;
+                highlightPossibleEndPositions(row, col, selectedShipToPlace.length);
+            } else {
+                const endCell = { row, col };
+                const placementAttempt = isValidPlacement(placementStartCell, endCell, selectedShipToPlace.length, false, playerBoard);
+                if (placementAttempt.valid) {
+                    placeShip(playerBoard, playerShips, selectedShipToPlace, placementStartCell, endCell, placementAttempt.orientation);
+                    saveHistory('Player Ship Placed');
+                    const shipButton = playerSetupShipsEl.querySelector(`button[data-ship-id="${selectedShipToPlace.id}"]`);
+                    if (shipButton) shipButton.disabled = true;
+                    selectedShipToPlace = null; placementStartCell = null;
+                    renderGrid(playerGridEl, playerBoard, true, true);
+                    if (playerShips.length === SHIP_TYPES.length) {
+                        gameStatusEl.textContent = 'All vessels deployed! Enemy fleet incoming...';
+                        playerSetupShipsEl.style.display = 'none';
+                        aiCalculateProbabilityMap();
+                        setTimeout(startPlacementPhaseComplete, 500);
+                    } else gameStatusEl.textContent = 'Vessel deployed. Select next vessel.';
+                } else {
+                    gameStatusEl.textContent = 'Invalid coordinates or overlap. Re-designate END for ' + selectedShipToPlace.name;
+                    renderGrid(playerGridEl, playerBoard, true, true);
+                    playerGridEl.querySelector(`[data-row='${placementStartCell.row}'][data-col='${placementStartCell.col}']`).classList.add('highlight-place');
+                    highlightPossibleEndPositions(placementStartCell.row, placementStartCell.col, selectedShipToPlace.length);
+                }
+            }
+        }
+        function highlightPossibleEndPositions(startRow, startCol, length) {
+            playerGridEl.querySelectorAll('.grid-cell.highlight-option1, .grid-cell.highlight-option2, .grid-cell.highlight-option3, .grid-cell.highlight-option4').forEach(c => c.classList.remove('highlight-option1', 'highlight-option2', 'highlight-option3', 'highlight-option4'));
+            let highlightColorIndex = 0;
+            const potentialEnds = [
+                { r: startRow, c: startCol + length - 1 }, { r: startRow, c: startCol - length + 1 },
+                { r: startRow + length - 1, c: startCol }, { r: startRow - length + 1, c: startCol }
+            ];
+            potentialEnds.forEach(endPos => {
+                const check = isValidPlacement({row: startRow, col: startCol}, {row: endPos.r, col: endPos.c}, length, true, playerBoard);
+                if (check.valid) {
+                     const cellEl = playerGridEl.querySelector(`[data-row='${endPos.r}'][data-col='${endPos.c}']`);
+                    if (cellEl) { cellEl.classList.add(HIGHLIGHT_COLORS[highlightColorIndex % HIGHLIGHT_COLORS.length]); highlightColorIndex++; }
+                }
+            });
+        }
+        function isValidPlacement(start, end, length, forHighlighting = false, boardToCheck = playerBoard) {
+            let inferredOrientation;
+            if (start.row === end.row && start.col !== end.col) inferredOrientation = 'H';
+            else if (start.col === end.col && start.row !== end.row) inferredOrientation = 'V';
+            else if (start.row === end.row && start.col === end.col && length === 1) inferredOrientation = 'H';
+            else return { valid: false, orientation: null };
+            const cellsToOccupy = [];
+            let minR = Math.min(start.row, end.row), maxR = Math.max(start.row, end.row);
+            let minC = Math.min(start.col, end.col), maxC = Math.max(start.col, end.col);
+            if (inferredOrientation === 'H') {
+                if (Math.abs(start.col - end.col) + 1 !== length) return { valid: false, orientation: 'H' };
+                for (let i = 0; i < length; i++) cellsToOccupy.push({ row: minR, col: minC + i });
+            } else {
+                if (Math.abs(start.row - end.row) + 1 !== length) return { valid: false, orientation: 'V' };
+                for (let i = 0; i < length; i++) cellsToOccupy.push({ row: minR + i, col: minC });
+            }
+            for (const cell of cellsToOccupy) {
+                if (cell.row < 0 || cell.row >= GRID_SIZE || cell.col < 0 || cell.col >= GRID_SIZE) return { valid: false, orientation: inferredOrientation };
+                 if (!forHighlighting && boardToCheck[cell.row][cell.col].state === CELL_STATE.SHIP) return { valid: false, orientation: inferredOrientation };
+            }
+            return { valid: true, orientation: inferredOrientation };
+        }
+        function placeShip(board, shipsArray, shipType, startCell, endCell, orientation) {
+            const cells = [];
+            let minR = Math.min(startCell.row, endCell.row), maxR = Math.max(startCell.row, endCell.row);
+            let minC = Math.min(startCell.col, endCell.col), maxC = Math.max(startCell.col, endCell.col);
+            if (orientation === 'H') for (let c = minC; c <= maxC; c++) { board[minR][c] = { state: CELL_STATE.SHIP, shipId: shipType.id }; cells.push({ row: minR, col: c }); }
+            else for (let r = minR; r <= maxR; r++) { board[r][minC] = { state: CELL_STATE.SHIP, shipId: shipType.id }; cells.push({ row: r, col: minC }); }
+            shipsArray.push({ ...shipType, cells, hits: 0, sunk: false });
+        }
+        function startPlacementPhaseComplete() {
+            console.log("START: startPlacementPhaseComplete");
+            try {
+                SHIP_TYPES.forEach(shipType => {
+                    console.log("AI placing:", shipType.name);
+                    placeRandomShip(aiBoard, aiShips, shipType);
+                });
+                console.log("AI ships placed:", JSON.parse(JSON.stringify(aiShips)));
+                gamePhase = 'PLAYER_TURN';
+                gameStatusEl.textContent = 'Your turn. Fire at will!';
+                console.log("Game phase set to PLAYER_TURN");
+                startTimer();
+                console.log("Timer started");
+                pauseButton.disabled = false;
+                saveHistory('Game Start');
+                console.log("History saved, game should start for player.");
+            } catch (error) {
+                console.error("ERROR in startPlacementPhaseComplete:", error);
+            }
+            console.log("END: startPlacementPhaseComplete");
+        }
+        function placeRandomShip(board, shipsArray, shipType) {
+            let placed = false; let attempts = 0;
+            console.log(`Attempting to place AI ship: ${shipType.name}`);
+            while (!placed && attempts < 200) {
+                attempts++; const orientation = Math.random() < 0.5 ? 'H' : 'V';
+                let r, c, endR, endC;
+                if (orientation === 'H') { r = Math.floor(Math.random()*GRID_SIZE); c = Math.floor(Math.random()*(GRID_SIZE-shipType.length+1)); endR=r; endC=c+shipType.length-1; }
+                else { r = Math.floor(Math.random()*(GRID_SIZE-shipType.length+1)); c = Math.floor(Math.random()*GRID_SIZE); endR=r+shipType.length-1; endC=c; }
+                const check = isValidPlacement({row:r,col:c}, {row:endR,col:endC}, shipType.length, false, board);
+                if (check.valid) {
+                    const cells = [];
+                    if (check.orientation==='H') for(let i=0;i<shipType.length;i++) { board[r][c+i]={state:CELL_STATE.SHIP,shipId:shipType.id}; cells.push({row:r,col:c+i});}
+                    else for(let i=0;i<shipType.length;i++) { board[r+i][c]={state:CELL_STATE.SHIP,shipId:shipType.id}; cells.push({row:r+i,col:c});}
+                    shipsArray.push({ ...shipType, cells, hits:0, sunk:false }); placed=true;
+                }
+            }
+            if (!placed) {
+                console.error(`AI FAILED to place ship after 200 attempts: ${shipType.name}. Board might be too crowded or isValidPlacement has an issue for AI.`);
+            } else {
+                console.log(`AI successfully placed ${shipType.name}`);
+            }
+        }
+        function handleAiGridClick(row, col) {
+            if (gamePhase !== 'PLAYER_TURN' || isPaused) return;
+            if (aiBoard[row][col].state === CELL_STATE.HIT || aiBoard[row][col].state === CELL_STATE.MISS || aiBoard[row][col].state === CELL_STATE.SUNK) {
+                gameStatusEl.textContent = "Coordinate previously targeted. Select new target."; return;
+            }
+            const timeTaken = recordMoveStartTime(); let resultText = '', event = 'Shot Fired';
+            const cell = aiBoard[row][col];
+            if (cell.state === CELL_STATE.SHIP) {
+                cell.state = CELL_STATE.HIT; const ship = aiShips.find(s => s.id === cell.shipId); ship.hits++;
+                if (ship.hits === ship.length) {
+                    ship.sunk = true; ship.cells.forEach(sc => aiBoard[sc.row][sc.col].state = CELL_STATE.SUNK);
+                    resultText = `Direct Hit! Enemy ${ship.name} sunk!`; event = `Sunk AI ${ship.name}`;
+                    if (checkWin(aiShips)) { gameOver(PLAYER_TYPE.HUMAN); return; }
+                } else { resultText = "Impact confirmed! Enemy vessel hit."; event = `Hit AI ship`; }
+            } else { cell.state = CELL_STATE.MISS; resultText = "Miss. No enemy contact."; event = `Missed AI`; }
+            addGameLogEntry(PLAYER_TYPE.HUMAN, {row,col}, resultText, timeTaken, event);
+            saveHistory(`Player shot at ${String.fromCharCode(65+col)}${row+1}`);
+            renderGrid(aiGridEl, aiBoard, false);
+            if (gamePhase === 'PLAYER_TURN') {
+                gamePhase = 'AI_TURN'; gameStatusEl.textContent = `Enemy firing solution calculating... (${resultText})`;
+                setTimeout(aiTurn, 700 + Math.random() * 600);
+            }
+        }
+        function aiTurn() {
+            if (gamePhase !== 'AI_TURN' || isPaused) return;
+            const timeTaken = recordMoveStartTime();
+            let row, col, shotFrom;
+
+            if (aiHuntModeData.active) {
+                shotFrom = "HUNT"; ({ row, col } = aiExecuteHuntStrategy());
+            } else {
+                ({ row, col } = aiExecuteSearchStrategy());
+                shotFrom = aiCurrentPhase;
+            }
+
+            let attempts = 0;
+            while ((row === undefined || col === undefined || playerBoard[row][col].state !== CELL_STATE.EMPTY) && attempts < GRID_SIZE * GRID_SIZE * 2) {
+                console.warn(`AI strategy '${shotFrom}' failed to pick valid empty cell (attempt ${attempts+1}), attempting random fallback.`);
+                let fallbackShot = aiRandomFallbackSearch(); row = fallbackShot.row; col = fallbackShot.col; attempts++;
+                if (attempts >= GRID_SIZE * GRID_SIZE && playerBoard[row][col].state !== CELL_STATE.EMPTY) {
+                     let foundFinal = false;
+                     for(let r_f=0; r_f<GRID_SIZE; r_f++) for(let c_f=0; c_f<GRID_SIZE; c_f++) if(playerBoard[r_f][c_f].state === CELL_STATE.EMPTY) {row=r_f; col=c_f; foundFinal=true; break;}
+                     if(!foundFinal) {
+                        console.error("AI CRITICAL FAILURE: NO EMPTY CELLS AT ALL!");
+                        addGameLogEntry(PLAYER_TYPE.AI, {row:0,col:0}, "AI Error - No valid moves.", timeTaken, "AI Error");
+                        gamePhase = 'PLAYER_TURN'; gameStatusEl.textContent = `Your turn. AI error.`; return;
+                     }
+                     break;
+                }
+            }
+            
+            let resultText = '', event = 'AI Shot Fired'; const cellData = playerBoard[row][col];
+            if (cellData.state === CELL_STATE.SHIP) {
+                cellData.state = CELL_STATE.HIT; const ship = playerShips.find(s => s.id === cellData.shipId); ship.hits++;
+                resultText = `Enemy hit your vessel at ${String.fromCharCode(65 + col)}${row + 1}!`; event = `AI Hit Player Ship`;
+                aiProcessHitResult(row, col, true, cellData.shipId);
+                if (ship.hits === ship.length) {
+                    ship.sunk = true; ship.cells.forEach(sc => playerBoard[sc.row][sc.col].state = CELL_STATE.SUNK);
+                    resultText = `Critical hit! Enemy sunk your ${ship.name}!`; event = `AI Sunk Player ${ship.name}`;
+                    aiProcessSunkShipResult(cellData.shipId);
+                    if (checkWin(playerShips)) { gameOver(PLAYER_TYPE.AI); return; }
+                }
+            } else {
+                cellData.state = CELL_STATE.MISS;
+                resultText = `Enemy shot at ${String.fromCharCode(65 + col)}${row + 1} missed.`; event = `AI Missed`;
+                aiProcessHitResult(row, col, false, null);
+            }
+            addGameLogEntry(PLAYER_TYPE.AI, {row, col}, resultText, timeTaken, event);
+            saveHistory(`AI shot at ${String.fromCharCode(65 + col)}${row + 1}`);
+            renderGrid(playerGridEl, playerBoard, true);
+            if (gamePhase === 'AI_TURN') { gamePhase = 'PLAYER_TURN'; gameStatusEl.textContent = `Your turn. ${resultText}`; }
+        }
+        function aiExecuteSearchStrategy() {
+            let shot;
+            if (aiCurrentPhase === 'BLIND_BARRAGE') {
+                shot = aiBlindBarrageSearch();
+                aiShotsInCurrentPhase++;
+                if (aiShotsInCurrentPhase >= BLIND_BARRAGE_SHOT_LIMIT) {
+                    console.log("AI: Blind Barrage limit reached. Switching to Focused Search.");
+                    aiCurrentPhase = 'FOCUSED_SEARCH'; aiShotsInCurrentPhase = 0; aiFocusedSearchStagnation = 0;
+                }
+            } else if (aiCurrentPhase === 'FOCUSED_SEARCH') {
+                if (aiFocusedSearchStagnation >= STAGNATION_LIMIT_FOCUSED) {
+                    console.log("AI: Stagnation in Focused Search. Making one Quadrant Probe shot.");
+                    aiFocusedSearchStagnation = 0; 
+                    let probeShot = aiQuadrantProbeSearch();
+                    if (probeShot && probeShot.row !== undefined && playerBoard[probeShot.row][probeShot.col].state === CELL_STATE.EMPTY) return probeShot;
+                }
+                aiCalculateProbabilityMap(); shot = aiProbabilityDensitySearch();
+            }
+            if (!shot || shot.row === undefined || playerBoard[shot.row][shot.col].state !== CELL_STATE.EMPTY) {
+                console.warn("AI search strategy (" + aiCurrentPhase + ") returned invalid or no shot, using random fallback.", shot);
+                shot = aiRandomFallbackSearch();
+            }
+            return shot;
+        }
+        function aiBlindBarrageSearch() { return aiRandomFallbackSearch(); }
+        function aiProbabilityDensitySearch() {
+            let bestScore = 0; let potentialTargets = [];
+            for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+                if (playerBoard[r][c].state === CELL_STATE.EMPTY && aiProbabilityMap[r][c] >= 0) {
+                    if (aiProbabilityMap[r][c] > bestScore) { bestScore = aiProbabilityMap[r][c]; potentialTargets = [{ row: r, col: c }]; }
+                    else if (aiProbabilityMap[r][c] === bestScore && bestScore > 0) potentialTargets.push({ row: r, col: c });
+                }
+            }
+            if (potentialTargets.length > 0) {
+                console.log("AI Focused Search: Best score", bestScore, "Found", potentialTargets.length, "potential targets.");
+                return potentialTargets[Math.floor(Math.random() * potentialTargets.length)];
+            } else { console.warn("AI Focused Search: No scorable targets from probability map. Using random fallback."); return aiRandomFallbackSearch(); }
+        }
+        function aiQuadrantProbeSearch() {
+            const quadrants = [
+                { r_start: 0, c_start: 0, r_end: Math.floor(GRID_SIZE/2), c_end: Math.floor(GRID_SIZE/2) }, { r_start: 0, c_start: Math.floor(GRID_SIZE/2), r_end: Math.floor(GRID_SIZE/2), c_end: GRID_SIZE },
+                { r_start: Math.floor(GRID_SIZE/2), c_start: 0, r_end: GRID_SIZE, c_end: Math.floor(GRID_SIZE/2) }, { r_start: Math.floor(GRID_SIZE/2), c_start: Math.floor(GRID_SIZE/2), r_end: GRID_SIZE, c_end: GRID_SIZE }
+            ];
+            let bestQuadrant = null; let minShotsInQuadrant = Infinity;
+            for (const q of quadrants) {
+                let shotsInThisQuadrant = 0; let emptyCellsInQuadrant = 0;
+                for (let r = q.r_start; r < q.r_end; r++) for (let c = q.c_start; c < q.c_end; c++) {
+                    if (playerBoard[r][c].state !== CELL_STATE.EMPTY) shotsInThisQuadrant++; else emptyCellsInQuadrant++;
+                }
+                if (emptyCellsInQuadrant > 0 && shotsInThisQuadrant < minShotsInQuadrant) { minShotsInQuadrant = shotsInThisQuadrant; bestQuadrant = q; }
+            }
+            if (bestQuadrant) {
+                const emptyInBestQuad = [];
+                for (let r = bestQuadrant.r_start; r < bestQuadrant.r_end; r++) for (let c = bestQuadrant.c_start; c < bestQuadrant.c_end; c++)
+                    if (playerBoard[r][c].state === CELL_STATE.EMPTY) emptyInBestQuad.push({row: r, col: c});
+                if (emptyInBestQuad.length > 0) return emptyInBestQuad[Math.floor(Math.random() * emptyInBestQuad.length)];
+            }
+            return null;
+        }
+        function aiRandomFallbackSearch() {
+            const emptyCells=[]; for(let r=0;r<GRID_SIZE;r++)for(let c=0;c<GRID_SIZE;c++)if(playerBoard[r][c].state===CELL_STATE.EMPTY)emptyCells.push({row:r,col:c});
+            if(emptyCells.length>0)return emptyCells[Math.floor(Math.random()*emptyCells.length)];
+            console.error("AI CRITICAL FALLBACK: No empty cells found at all for random fallback!"); return {row:0,col:0};
+        }
+        function aiExecuteHuntStrategy() {
+            if (aiHuntModeData.potentialTargets.length === 0) aiGenerateHuntTargets();
+            if (aiHuntModeData.potentialTargets.length > 0) return aiHuntModeData.potentialTargets.shift();
+            else { console.log("AI Hunt: No targets found after generation. Resetting."); aiResetHuntModeAndCheckForLingeringHits(); return aiExecuteSearchStrategy(); }
+        }
+        function aiGenerateHuntTargets() {
+            aiHuntModeData.potentialTargets = []; const directions = [[-1,0],[1,0],[0,-1],[0,1]];
+            if (aiHuntModeData.confirmedHits.length === 1) {
+                const hit=aiHuntModeData.initialHit; directions.forEach(dir => {const r=hit.row+dir[0],c=hit.col+dir[1]; if(isValidTargetForAI(r,c))aiHuntModeData.potentialTargets.push({row:r,col:c,fromHit:hit,direction:dir});});
+            } else if (aiHuntModeData.confirmedHits.length > 1) {
+                if (!aiHuntModeData.currentLineOrientation) {
+                    const h1=aiHuntModeData.confirmedHits[0],h2=aiHuntModeData.confirmedHits[aiHuntModeData.confirmedHits.length-1];
+                    let dr=h2.row-h1.row,dc=h2.col-h1.col;
+                    if((dr===0&&dc!==0)||(dr!==0&&dc===0)){if(dr!==0)dr=dr/Math.abs(dr);else dr=0; if(dc!==0)dc=dc/Math.abs(dc);else dc=0; aiHuntModeData.currentLineOrientation=[dr,dc];}
+                    else{console.warn("AI Hunt: Hits not linear for orientation in GenerateTargets.",aiHuntModeData.confirmedHits);aiResetHuntModeAndCheckForLingeringHits();return;}
+                }
+                const orientation=aiHuntModeData.currentLineOrientation; const firstHit=aiHuntModeData.confirmedHits[0],lastHit=aiHuntModeData.confirmedHits[aiHuntModeData.confirmedHits.length-1];
+                let rN=lastHit.row+orientation[0],cN=lastHit.col+orientation[1]; if(isValidTargetForAI(rN,cN))aiHuntModeData.potentialTargets.push({row:rN,col:cN,fromHit:lastHit,direction:orientation});
+                rN=firstHit.row-orientation[0];cN=firstHit.col-orientation[1]; if(isValidTargetForAI(rN,cN))aiHuntModeData.potentialTargets.unshift({row:rN,col:cN,fromHit:firstHit,direction:[-orientation[0],-orientation[1]]});
+            }
+            if(aiHuntModeData.potentialTargets.length===0&&aiHuntModeData.active){let fallbackTargets=[];for(const confirmedHit of aiHuntModeData.confirmedHits)directions.forEach(dir=>{const r=confirmedHit.row+dir[0],c=confirmedHit.col+dir[1];if(isValidTargetForAI(r,c)&&!fallbackTargets.some(t=>t.row===r&&t.col===c))fallbackTargets.push({row:r,col:c,fromHit:confirmedHit,direction:dir});}); aiHuntModeData.potentialTargets=fallbackTargets; if(aiHuntModeData.potentialTargets.length===0)aiResetHuntModeAndCheckForLingeringHits();}
+            aiHuntModeData.potentialTargets.sort(()=>Math.random()-0.5);
+        }
+        function aiProcessHitResult(row,col,isHit,hitShipId){
+            if(isHit){
+                if(aiCurrentPhase !== 'HUNT_MODE') console.log("AI: Hit at (" + row + "," + col + ")! Switching to HUNT_MODE from " + aiCurrentPhase);
+                aiCurrentPhase='HUNT_MODE'; aiShotsInCurrentPhase=0; aiFocusedSearchStagnation=0;
+                if(!aiHuntModeData.active || aiHuntModeData.shipId !== hitShipId){console.log("AI: Entering/Switching Hunt Mode on ship",hitShipId,"at",row,col);aiHuntModeData.active=true;aiHuntModeData.shipId=hitShipId;aiHuntModeData.initialHit={row,col};aiHuntModeData.confirmedHits=[{row,col}];aiHuntModeData.potentialTargets=[];aiHuntModeData.currentLineOrientation=null;}
+                else{
+                    if(aiHuntModeData.shipId===null&&hitShipId)aiHuntModeData.shipId=hitShipId;
+                    if(aiHuntModeData.shipId===hitShipId||!aiHuntModeData.shipId){if(!aiHuntModeData.confirmedHits.some(h=>h.row===row&&h.col===col)){aiHuntModeData.confirmedHits.push({row,col});aiHuntModeData.confirmedHits.sort((a,b)=>(a.row===b.row)?a.col-b.col:a.row-b.row);}
+                        if(aiHuntModeData.confirmedHits.length>=2){const h1=aiHuntModeData.confirmedHits[0],h2=aiHuntModeData.confirmedHits[aiHuntModeData.confirmedHits.length-1];let dr=h2.row-h1.row,dc=h2.col-h1.col;if((dr===0&&dc!==0)||(dr!==0&&dc===0)){if(dr!==0)dr=dr/Math.abs(dr);else dr=0;if(dc!==0)dc=dc/Math.abs(dc);else dc=0;aiHuntModeData.currentLineOrientation=[dr,dc];}else{aiHuntModeData.currentLineOrientation=null;console.warn("AI Hunt: Confirmed hits not linear.",aiHuntModeData.confirmedHits);}}
+                        aiHuntModeData.potentialTargets=[];
+                    } else console.log("AI Hunt: Hit different ship. Current:",aiHuntModeData.shipId,"New:",hitShipId);
+                }
+            } else { if(aiHuntModeData.active)aiHuntModeData.potentialTargets=aiHuntModeData.potentialTargets.filter(t=>!(t.row===row&&t.col===col)); else if (aiCurrentPhase === 'FOCUSED_SEARCH') aiFocusedSearchStagnation++; }
+            if (!aiHuntModeData.active || (aiCurrentPhase === 'FOCUSED_SEARCH' && !isHit)) aiCalculateProbabilityMap();
+        }
+        function aiProcessSunkShipResult(sunkShipId){console.log("AI: Player ship",sunkShipId,"sunk.");if(aiHuntModeData.active&&(aiHuntModeData.shipId===sunkShipId||aiHuntModeData.confirmedHits.some(h=>playerBoard[h.row][h.col].shipId===sunkShipId)))aiResetHuntModeAndCheckForLingeringHits();aiCalculateProbabilityMap();}
+        function aiResetHuntModeAndCheckForLingeringHits(){console.log("AI: Resetting Hunt Mode after sink.");aiHuntModeData={active:false,shipId:null,initialHit:null,confirmedHits:[],potentialTargets:[],currentLineOrientation:null};for(let r=0;r<GRID_SIZE;r++)for(let c=0;c<GRID_SIZE;c++)if(playerBoard[r][c].state===CELL_STATE.HIT){const hitShip=playerShips.find(s=>s.id===playerBoard[r][c].shipId);if(hitShip&&!hitShip.sunk){console.log("AI: Found lingering hit on",hitShip.id,"@",r,c,". Initiating new hunt.");aiProcessHitResult(r,c,true,playerBoard[r][c].shipId);aiCurrentPhase='HUNT_MODE';return;}} if(!aiHuntModeData.active){console.log("AI: No lingering hits found. Reverting to Focused Search."); aiCurrentPhase='FOCUSED_SEARCH';aiFocusedSearchStagnation=0;aiShotsInCurrentPhase = 0;} }
+        function aiCalculateProbabilityMap() {
+            aiProbabilityMap = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(0));
+            const unsunkPlayerShips = playerShips.filter(s => !s.sunk);
+            if (unsunkPlayerShips.length === 0 || (gamePhase === 'SETUP' && playerShips.length < SHIP_TYPES.length)) return;
+
+            for (let r_target = 0; r_target < GRID_SIZE; r_target++) {
+                for (let c_target = 0; c_target < GRID_SIZE; c_target++) {
+                    if (playerBoard[r_target][c_target].state !== CELL_STATE.EMPTY) { aiProbabilityMap[r_target][c_target] = -1; continue; }
+                    let cellScore = 1;
+                    for (const shipType of SHIP_TYPES) {
+                        const isThisShipTypeActive = unsunkPlayerShips.some(unsunkShip => unsunkShip.id === shipType.id);
+                        if (!isThisShipTypeActive) continue;
+                        const shipLength = shipType.length;
+                        for (let c_offset = 0; c_offset < shipLength; c_offset++) { // Horizontal
+                            const startCol = c_target - c_offset, endCol = startCol + shipLength - 1;
+                            if (startCol >= 0 && endCol < GRID_SIZE) {
+                                let canPlaceH = true;
+                                for (let k = 0; k < shipLength; k++) {
+                                    const cs = playerBoard[r_target][startCol + k].state, sid = playerBoard[r_target][startCol + k].shipId;
+                                    if (cs === CELL_STATE.MISS || cs === CELL_STATE.SUNK || (cs === CELL_STATE.HIT && sid && sid !== shipType.id)) { canPlaceH = false; break; }
+                                }
+                                if (canPlaceH) cellScore++;
+                            }
+                        }
+                        for (let r_offset = 0; r_offset < shipLength; r_offset++) { // Vertical
+                            const startRow = r_target - r_offset, endRow = startRow + shipLength - 1;
+                            if (startRow >= 0 && endRow < GRID_SIZE) {
+                                let canPlaceV = true;
+                                for (let k = 0; k < shipLength; k++) {
+                                    const cs = playerBoard[startRow + k][c_target].state, sid = playerBoard[startRow + k][c_target].shipId;
+                                    if (cs === CELL_STATE.MISS || cs === CELL_STATE.SUNK || (cs === CELL_STATE.HIT && sid && sid !== shipType.id)) { canPlaceV = false; break; }
+                                }
+                                if (canPlaceV) cellScore++;
+                            }
+                        }
+                    }
+                    aiProbabilityMap[r_target][c_target] = cellScore;
+                }
+            }
+        }
+        function isValidTargetForAI(r,c){return r>=0&&r<GRID_SIZE&&c>=0&&c<GRID_SIZE&&playerBoard[r][c].state===CELL_STATE.EMPTY;}
+        function checkWin(shipsArray) { return shipsArray.every(ship => ship.sunk); }
+        function gameOver(winner) {
+            gamePhase = 'GAME_OVER'; if (gameTimerInterval) clearInterval(gameTimerInterval);
+            const winnerText = winner === PLAYER_TYPE.HUMAN ? "Victory! Enemy fleet neutralized." : "Defeat. All friendly vessels lost.";
+            gameStatusEl.textContent = `${winnerText} Mission Over.`;
+            pauseButton.disabled = true; undoButton.disabled = false;
+            endGameLogContainerEl.style.display = 'block'; endGameLogTableContainerEl.innerHTML = generateLogTableHtml();
+            addGameLogEntry('System', null, `${winner === PLAYER_TYPE.HUMAN ? "Player" : "AI"} wins! Mission concluded in ${formatTime(secondsElapsed)}.`, 0, 'Game End');
+            saveHistory('Game Over');
+        }
+        function startTimer() {
+            if (gameTimerInterval) clearInterval(gameTimerInterval); moveStartTime = Date.now();
+            gameTimerInterval = setInterval(() => { if (!isPaused) { secondsElapsed++; updateTimerDisplay(); }}, 1000);
+        }
+        function updateTimerDisplay() { gameTimerEl.textContent = `Time: ${formatTime(secondsElapsed)}`; }
+        function formatTime(totalSeconds) {
+            const minutes = Math.floor(totalSeconds/60); const seconds = totalSeconds%60;
+            return `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+        }
+        function recordMoveStartTime() {
+            const now = Date.now(); const timeTaken = moveStartTime ? (now-moveStartTime)/1000 : 0;
+            moveStartTime = now; return timeTaken;
+        }
+        function addGameLogEntry(player, targetCell, result, timeTaken, event = 'Move') {
+            const entry = {
+                turn: gameLog.length+1, player: player===PLAYER_TYPE.HUMAN ? "Commander":"Enemy AI",
+                action: targetCell ? `Target: ${String.fromCharCode(65+targetCell.col)}${targetCell.row+1}`:event,
+                result: result, timeTaken: timeTaken.toFixed(1)+'s',
+                timestamp: new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})
+            };
+            gameLog.push(entry); updateGameLogDisplay();
+        }
+        function generateLogTableHtml() {
+            if (gameLog.length===0) return "<p>No operational data recorded.</p>";
+            let tableHtml = '<table><thead><tr><th>#</th><th>Operator</th><th>Action</th><th>Outcome</th><th>Duration</th><th>Timestamp</th></tr></thead><tbody>';
+            gameLog.forEach(entry => { tableHtml += `<tr><td>${entry.turn}</td><td>${entry.player}</td><td>${entry.action}</td><td>${entry.result}</td><td>${entry.timeTaken}</td><td>${entry.timestamp}</td></tr>`; });
+            tableHtml += '</tbody></table>'; return tableHtml;
+        }
+        function updateGameLogDisplay() {
+            const logTableHtml = generateLogTableHtml(); gameLogContentEl.innerHTML = logTableHtml;
+            if (gameLogModal.style.display==='block') gameLogContentEl.scrollTop = gameLogContentEl.scrollHeight;
+            if (gamePhase === 'GAME_OVER') { endGameLogTableContainerEl.innerHTML = logTableHtml; endGameLogTableContainerEl.scrollTop = endGameLogTableContainerEl.scrollHeight; }
+        }
+        function saveHistory(actionDescription="N/A") {
+            if(historyIndex < history.length-1) history = history.slice(0, historyIndex+1);
+            const state = {
+                playerBoardState: JSON.parse(JSON.stringify(playerBoard)), aiBoardState: JSON.parse(JSON.stringify(aiBoard)),
+                playerShipsState: JSON.parse(JSON.stringify(playerShips)), aiShipsState: JSON.parse(JSON.stringify(aiShips)),
+                gameLogState: JSON.parse(JSON.stringify(gameLog)), secondsElapsedState: secondsElapsed, gamePhaseState: gamePhase,
+                aiCurrentPhaseState: aiCurrentPhase, aiShotsInCurrentPhaseState: aiShotsInCurrentPhase,
+                aiFocusedSearchStagnationState: aiFocusedSearchStagnation,
+                aiProbabilityMapState: JSON.parse(JSON.stringify(aiProbabilityMap)),
+                aiHuntModeDataState: JSON.parse(JSON.stringify(aiHuntModeData)),
+                selectedShipToPlaceState: JSON.parse(JSON.stringify(selectedShipToPlace)), placementStartCellState: JSON.parse(JSON.stringify(placementStartCell)),
+                actionDescription: actionDescription
+            };
+            history.push(state); historyIndex = history.length-1; updateUndoRedoButtons();
+        }
+        function loadState(state) {
+            playerBoard = JSON.parse(JSON.stringify(state.playerBoardState)); aiBoard = JSON.parse(JSON.stringify(state.aiBoardState));
+            playerShips = JSON.parse(JSON.stringify(state.playerShipsState)); aiShips = JSON.parse(JSON.stringify(state.aiShipsState));
+            gameLog = JSON.parse(JSON.stringify(state.gameLogState)); secondsElapsed = state.secondsElapsedState; gamePhase = state.gamePhaseState;
+            aiCurrentPhase = state.aiCurrentPhaseState; aiShotsInCurrentPhase = state.aiShotsInCurrentPhaseState;
+            aiFocusedSearchStagnation = state.aiFocusedSearchStagnationState;
+            aiProbabilityMap = JSON.parse(JSON.stringify(state.aiProbabilityMapState || createEmptyBoard().map(row => row.map(() => 0)) ));
+            aiHuntModeData = JSON.parse(JSON.stringify(state.aiHuntModeDataState));
+            selectedShipToPlace = JSON.parse(JSON.stringify(state.selectedShipToPlaceState)); placementStartCell = JSON.parse(JSON.stringify(state.placementStartCellState));
+            removeRepositionPopover();
+            renderGrid(playerGridEl, playerBoard, true, gamePhase === 'SETUP'); renderGrid(aiGridEl, aiBoard, false);
+            updateTimerDisplay(); updateGameLogDisplay();
+            if (gamePhase === 'SETUP') {
+                playerSetupShipsEl.style.display = 'flex';
+                SHIP_TYPES.forEach(st => {
+                    const btn = playerSetupShipsEl.querySelector(`button[data-ship-id='${st.id}']`);
+                    if (btn) { btn.disabled = playerShips.some(ps => ps.id === st.id); btn.classList.toggle('selected', selectedShipToPlace && selectedShipToPlace.id === st.id); }
+                });
+                gameStatusEl.textContent = selectedShipToPlace ? `Selected ${selectedShipToPlace.name}. Designate start/end.` : 'Deploy your fleet, Commander!';
+            } else if (gamePhase === 'PLAYER_TURN') { gameStatusEl.textContent = 'Your turn. Fire at will!'; playerSetupShipsEl.style.display = 'none';
+            } else if (gamePhase === 'AI_TURN') { gameStatusEl.textContent = 'Enemy firing solution calculating... (Restored)'; playerSetupShipsEl.style.display = 'none';
+            } else if (gamePhase === 'GAME_OVER') {
+                const winner = playerShips.every(s => s.sunk) ? PLAYER_TYPE.AI : PLAYER_TYPE.HUMAN;
+                const winnerText = winner === PLAYER_TYPE.HUMAN ? "Victory!" : "Defeat.";
+                gameStatusEl.textContent = `${winnerText} Mission Over. (Restored)`; endGameLogContainerEl.style.display = 'block';
+            }
+            if (gamePhase === 'GAME_OVER' || (gamePhase === 'SETUP' && playerShips.length < SHIP_TYPES.length)) {
+                if (gameTimerInterval) clearInterval(gameTimerInterval); gameTimerInterval = null; pauseButton.disabled = true;
+            } else { if (!gameTimerInterval && !isPaused) startTimer(); pauseButton.disabled = false; }
+            if (isPaused) {
+                if (gameTimerInterval) clearInterval(gameTimerInterval); pauseModal.style.display = 'block';
+                playerGridEl.style.pointerEvents = 'none'; aiGridEl.style.pointerEvents = 'none';
+            } else {
+                pauseModal.style.display = 'none'; playerGridEl.style.pointerEvents = 'auto'; aiGridEl.style.pointerEvents = 'auto';
+            }
+            updateUndoRedoButtons();
+        }
+        function undo() { if (historyIndex > 0) { historyIndex--; loadState(history[historyIndex]); console.log("Undo to: ", history[historyIndex].actionDescription); }}
+        function redo() { if (historyIndex < history.length - 1) { historyIndex++; loadState(history[historyIndex]); console.log("Redo to: ", history[historyIndex].actionDescription); }}
+        function updateUndoRedoButtons() { undoButton.disabled = historyIndex <= 0; redoButton.disabled = historyIndex >= history.length - 1; }
+        restartButton.onclick = () => { restartConfirmModal.style.display = 'block'; };
+        confirmRestartButton.onclick = () => { initGame(); restartConfirmModal.style.display = 'none'; };
+        cancelRestartButton.onclick = () => { restartConfirmModal.style.display = 'none'; };
+        closeRestartConfirmModal.onclick = () => { restartConfirmModal.style.display = 'none'; };
+        undoButton.onclick = undo; redoButton.onclick = redo;
+        pauseButton.onclick = () => {
+            if (gamePhase === 'GAME_OVER' || gamePhase === 'SETUP') return;
+            isPaused = true; if (gameTimerInterval) clearInterval(gameTimerInterval);
+            gameStatusEl.textContent = 'Mission Paused. Awaiting orders.'; pauseModal.style.display = 'block';
+            playerGridEl.style.pointerEvents = 'none'; aiGridEl.style.pointerEvents = 'none';
+        };
+        const closePauseModalButton = document.getElementById('close-pause-modal');
+        if(closePauseModalButton) closePauseModalButton.onclick = () => {
+            isPaused = false; pauseModal.style.display = 'none';
+            gameStatusEl.textContent = gamePhase === 'PLAYER_TURN' ? 'Your turn. Fire at will!' : 'Enemy firing solution calculating...';
+            if (gamePhase !== 'GAME_OVER' && gamePhase !== 'SETUP') startTimer();
+            playerGridEl.style.pointerEvents = 'auto'; aiGridEl.style.pointerEvents = 'auto';
+        };
+        continueButton.onclick = () => {
+            isPaused = false; pauseModal.style.display = 'none';
+            gameStatusEl.textContent = gamePhase === 'PLAYER_TURN' ? 'Your turn. Fire at will!' : 'Enemy firing solution calculating...';
+            if (gamePhase !== 'GAME_OVER' && gamePhase !== 'SETUP') startTimer();
+            playerGridEl.style.pointerEvents = 'auto'; aiGridEl.style.pointerEvents = 'auto';
+        };
+        gameLogButton.onclick = () => { gameLogModal.style.display = 'block'; updateGameLogDisplay(); };
+        creditsButton.onclick = () => creditsModal.style.display = 'block';
+        moreGamesButton.onclick = () => moreGamesModal.style.display = 'block';
+        closeLogModal.onclick = () => gameLogModal.style.display = 'none';
+        closeCreditsModal.onclick = () => creditsModal.style.display = 'none';
+        closeMoreGamesModal.onclick = () => moreGamesModal.style.display = 'none';
+        window.onclick = (event) => {
+            if (event.target == gameLogModal) gameLogModal.style.display = "none";
+            if (event.target == creditsModal) creditsModal.style.display = "none";
+            if (event.target == moreGamesModal) moreGamesModal.style.display = "none";
+            if (event.target == restartConfirmModal) restartConfirmModal.style.display = "none";
+        };
+        function populateInfoModals() {
+            const creditsNameStrongEl = document.getElementById('credits-name-placeholder');
+            const creditsNameLink = document.createElement('a');
+            creditsNameLink.href = YOUR_PROFILE_URL;
+            creditsNameLink.textContent = YOUR_NAME_ALIAS;
+            creditsNameLink.target = "_blank";
+            creditsNameLink.style.color = "var(--accent-blue)";
+            creditsNameLink.style.textDecoration = "none";
+            creditsNameLink.onmouseover = () => creditsNameLink.style.textDecoration = "underline";
+            creditsNameLink.onmouseout = () => creditsNameLink.style.textDecoration = "none";
+            creditsNameStrongEl.innerHTML = ''; 
+            creditsNameStrongEl.appendChild(creditsNameLink);
+
+            creditsSocialsEl.innerHTML = '';
+            SOCIAL_LINKS.forEach(link => {
+                const li = document.createElement('li'); const a = document.createElement('a');
+                a.href = link.url; a.textContent = link.platform; a.target = "_blank"; li.appendChild(a); creditsSocialsEl.appendChild(li);
+            });
+            moreGamesNameEls.forEach(el => el.textContent = YOUR_NAME_ALIAS); moreGamesListEl.innerHTML = '';
+            MORE_GAMES_LINKS.forEach(game => {
+                const li = document.createElement('li'); const a = document.createElement('a');
+                a.href = game.repoUrl; a.textContent = game.name; a.target = "_blank"; li.appendChild(a); moreGamesListEl.appendChild(li);
+            });
+        }
+        populateInfoModals();
+        initGame();
+        saveHistory('Initial Game Setup');
+    </script>
+</body>
+</html>
