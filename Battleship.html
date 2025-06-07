@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Battleship</title>
+    <title>Battleship Command</title>
     <style>
         :root {
             --bg-main: #0d1117;
@@ -467,7 +467,7 @@
     </div>
     <div id="pause-modal" class="modal">
         <div class="modal-content">
-            <span class="close-button" id="close-pause-modal">&times;</span>
+            <span class="close-button" id="close-pause-modal">×</span>
             <h2>Operations Paused</h2>
             <p>Hostilities are on hold. Awaiting your command.</p>
             <button id="continue-button">Resume Operations</button>
@@ -475,7 +475,7 @@
     </div>
     <div id="game-log-modal" class="modal">
         <div class="modal-content">
-            <span class="close-button" id="close-log-modal">&times;</span>
+            <span class="close-button" id="close-log-modal">×</span>
             <h2>Live Mission Log</h2>
             <div id="game-log-content">
             </div>
@@ -483,7 +483,7 @@
     </div>
     <div id="credits-modal" class="modal">
         <div class="modal-content">
-            <span class="close-button" id="close-credits-modal">&times;</span>
+            <span class="close-button" id="close-credits-modal">×</span>
             <h2>Intelligence Briefing</h2>
             <p>This strategic simulation module was developed by: <strong id="credits-name-placeholder"></strong></p>
             <p>Connect with Command:</p>
@@ -493,7 +493,7 @@
     </div>
     <div id="more-games-modal" class="modal">
         <div class="modal-content">
-            <span class="close-button" id="close-more-games-modal">&times;</span>
+            <span class="close-button" id="close-more-games-modal">×</span>
             <h2>Archived Simulations by <span id="more-games-name"></span></h2>
             <p>Explore further wargames:</p>
             <ul id="more-games-list">
@@ -502,7 +502,7 @@
     </div>
     <div id="restart-confirm-modal" class="modal">
         <div class="modal-content">
-            <span class="close-button" id="close-restart-confirm-modal">&times;</span>
+            <span class="close-button" id="close-restart-confirm-modal">×</span>
             <h2>Confirm Restart</h2>
             <p>Are you sure you want to abandon the current mission and restart deployment?</p>
             <div class="modal-actions">
@@ -520,12 +520,12 @@
             { name: "Solitaire", repoUrl: "https://github.com/ShaneStudios/Solitaire" },
             { name: "UNO", repoUrl: "https://github.com/ShaneStudios/UNO" },
             { name: "2048", repoUrl: "https://github.com/ShaneStudios/2048" },
+            { name: "Minesweeper", repoUrl: "https://github.com/ShaneStudios/Minesweeper" },
             { name: "Music Player", repoUrl: "https://github.com/ShaneStudios/MiniMusicPlayerHTML5" },
             { name: "Face Tracker", repoUrl: "https://github.com/ShaneStudios/face-tracker-HTML5" },
             { name: "Google Gemini Client", repoUrl: "https://github.com/ShaneStudios/Google-Gemini-HTML5" },
             { name: "Prime Number Counter", repoUrl: "https://github.com/ShaneStudios/Prime-Number-Counter" },
-            { name: "Agar.io Local", repoUrl: "https://github.com/ShaneStudios/Agar.io-Local" },
-            { name: "Minesweeper", repoUrl: "https://github.com/ShaneStudios/Minesweeper" }
+            { name: "Agar.io Local", repoUrl: "https://github.com/ShaneStudios/Agar.io-Local" }
         ];
         const playerGridEl = document.getElementById('player-grid');
         const aiGridEl = document.getElementById('ai-grid');
